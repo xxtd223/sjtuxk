@@ -34,7 +34,7 @@ node monitor.mjs -crz         # 3. 疯狂模式
 
 ## 配置 `monitor.config.json`
 
-把 `monitor.config.example.json` 复制成 `monitor.config.json`，改成自己的课程即可（该文件已在 `.gitignore` 里，不会被提交）：
+把 `monitor.config.example.json` 复制成 `monitor.config.json`，改成自己的课程即可：
 
 ```json
 {
