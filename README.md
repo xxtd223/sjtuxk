@@ -108,6 +108,7 @@ node monitor.mjs
 |`exprs.mjs`|接口请求（页面内 fetch）|
 |`cdp.mjs`|极简 CDP 客户端|
 |`start-edge-debug.ps1`|启动 Edge 并开启 / 检测调试端口|
+|`patch-localstate.mjs`|写 Edge 的远程调试开关（自动备份 / 可还原）|
 |`monitor.log`|运行日志（自动生成）|
 |`monitor-state.json`|运行状态（自动生成）|
 
@@ -120,13 +121,21 @@ powershell -ExecutionPolicy Bypass -File .\start-edge-debug.ps1            # Edg
 powershell -ExecutionPolicy Bypass -File .\start-edge-debug.ps1 -Restart   # 由脚本先强退 Edge 再启动
 ```
 
-脚本会启动 Edge、打开调试设置页并检测端口。若端口没起来，按页面提示操作：
+脚本会：写 Edge 的远程调试开关 → 启动 Edge（`--remote-debugging-port` + `--restore-last-session`）→ 真握手检测。
 
-1. 打开 `edge://inspect/#remote-debugging`；
-2. 打开「远程调试」开关；
-3. Edge 弹出「是否允许远程调试」→ 点 **允许**。
+**Edge 153 的关键前提（已由脚本代劳）**：默认用户数据目录下，光传 `--remote-debugging-port` 是不起作用的
+（Chromium 136+ 安全加固），而且 `edge://inspect` 里那个开关只写一半（缺 `allowed` 门禁位）。
+脚本会往 Edge 的 `Local State`（普通 JSON，不需管理员）写入：
 
-只需允许一次（脚本全程只维持一条连接）。期间别用其它工具连同一个 Edge。
+```json
+"devtools": { "remote_debugging": { "allowed": true, "user-enabled": true } }
+```
+
+这会让调试服务以**批准模式**在你已登录的 profile 上启动（原文件备份为 `Local State.bak`，
+可用 `node patch-localstate.mjs --restore` 还原）。
+
+启动后在 Edge 里会弹一次 **「是否允许远程调试」→ 点允许**（每个新连接需批一次；脚本全程只维持一条
+长连接，所以点一次就能长期工作，只有断线重连才会再问）。期间别用其它工具连同一个 Edge。
 
 ## 连接不上怎么办
 

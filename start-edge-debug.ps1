@@ -69,6 +69,14 @@ if ($running) {
 
 if (Test-Path $portFile) { Remove-Item $portFile -Force -ErrorAction SilentlyContinue }
 
+# 关键：写 Local State 打开远程调试门禁
+#   devtools.remote_debugging.allowed = true（策略层门禁，否则服务根本不会起）
+#   devtools.remote_debugging.user-enabled = true（批准模式；它会跳过「默认用户数据目录」限制）
+if (Test-Path "$HERE\patch-localstate.mjs") {
+  Write-Host "写入 Edge Local State 的远程调试开关（自动备份为 Local State.bak）…"
+  & node "$HERE\patch-localstate.mjs" --user-enabled=true | Out-Null
+}
+
 Write-Host "启动 Edge（--remote-debugging-port=$Port --restore-last-session）并打开远程调试设置页…"
 Start-Process -FilePath $exe -ArgumentList "--remote-debugging-port=$Port", "--restore-last-session", "edge://inspect/#remote-debugging", $Url
 
@@ -82,8 +90,8 @@ for ($i = 0; $i -lt 20; $i++) {
 }
 
 Write-Host "⚠ 调试口仍不可用。" -ForegroundColor Yellow
-Write-Host "  Edge 153 用默认用户数据目录时会忽略 --remote-debugging-port（安全加固），需要手动开："
-Write-Host "    1) 在刚打开的 edge://inspect/#remote-debugging 页面里，打开「远程调试 / Remote debugging」开关；"
-Write-Host "    2) Edge 弹出「是否允许远程调试」→ 点『允许』；"
-Write-Host "    3) 重跑本脚本验证（或直接 node monitor.mjs --dry）。"
+Write-Host "  Edge 153 用默认用户数据目录时：flag 路线会被安全加固拦住，必须走「批准模式」："
+Write-Host "    1) 已自动把 Local State 的 devtools.remote_debugging.allowed / user-enabled 写得 true；"
+Write-Host "    2) 确认 Edge 是【完全退出】后由本脚本启动的（Edge 已在运行时带参数启动无效）；"
+Write-Host "    3) 启动后在 Edge 里看是否弹「是否允许远程调试」→ 点『允许』，然后重跑本脚本验证。"
 exit 2
