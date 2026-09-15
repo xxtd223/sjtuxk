@@ -1,0 +1,18 @@
+{
+  "courses": [
+    {
+      "bjmc": "ABC1001",
+      "name": "示例课程一",
+      "campus": "闵行",
+      "teachers": ["张三"],
+      "time": "星期四",
+      "allowFallback": true,
+      "lx": "0"
+    },
+    { "bjmc": "ABC1002", "name": "示例课程二", "lx": "0" }
+  ],
+  "minIntervalMs": 25000,
+  "maxIntervalMs": 35000,
+  "crazyConcurrency": 3,
+  "deadline": "2026-09-24T20:00:00+08:00"
+}
