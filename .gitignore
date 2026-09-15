@@ -1,14 +1,15 @@
-# 运行期产物
-monitor.log
-monitor-state.json
-monitor.lock
-
-# 本地私有配置（含自己的课表，勿上传）
+# 自己的配置（含课表，勿上传）——仓库里提交的是 monitor.config.example.json
+monitor.config.json
 monitor.config.local.json
 
 # 自测与参考文件
 test-*.mjs
 reference-*.js
+
+# 运行期产物
+monitor.log
+monitor-state.json
+monitor.lock
 
 # 其它
 node_modules/

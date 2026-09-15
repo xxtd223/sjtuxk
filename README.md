@@ -34,7 +34,7 @@ node monitor.mjs -crz         # 3. 疯狂模式
 
 ## 配置 `monitor.config.json`
 
-通用示例（照着改成自己的课程即可）：
+把 `monitor.config.example.json` 复制成 `monitor.config.json`，改成自己的课程即可（该文件已在 `.gitignore` 里，不会被提交）：
 
 ```json
 {
@@ -70,7 +70,7 @@ node monitor.mjs -crz         # 3. 疯狂模式
 
 ### 用自己的配置
 
-改仓库里的 `monitor.config.json`，或用环境变量指向另一份配置（保持仓库文件不动）：
+直接改 `monitor.config.json`，或用环境变量指向另一份配置：
 
 ```powershell
 $env:MONITOR_CONFIG = "C:\path\to\my.config.json"
@@ -101,7 +101,8 @@ node monitor.mjs
 |文件|说明|
 |-|-|
 |`monitor.mjs`|主程序|
-|`monitor.config.json`|课程与参数配置|
+|`monitor.config.json`|课程与参数配置（自己创建）|
+|`monitor.config.example.json`|配置示例|
 |`select.mjs`|筛选 / 排序逻辑|
 |`sjtu-api.mjs`|接口请求（Node 直连）|
 |`exprs.mjs`|接口请求（页面内 fetch）|
