@@ -15,10 +15,15 @@ node monitor.mjs -crz      # 疯狂模式
 
 | 项目 | 要求 |
 | --- | --- |
-| 操作系统 | Windows 10 / 11 |
-| Node.js | ≥ 18 |
+| 操作系统 | Windows 10 / 11（开发与实测平台；macOS / Linux 见下方说明） |
+| Node.js | ≥ 22（用到全局 `WebSocket`） |
 | 浏览器 | Microsoft Edge，保持运行且**已开启远程调试**，并已登录选课、打开选课页 |
-| 通知通道（可选） | `openclaw` CLI |
+
+> **macOS / Linux 用户**：核心逻辑（识课、排序、请求、选课）是跨平台的，但引导层需自己补三处：
+> ① 两个硬编码路径——`cdp.mjs` 的 Edge 调试端口文件、`monitor.mjs` 的通知命令（可用 `EDGE_DEVTOOLS_PORTFILE`、`MONITOR_OPENCLAW` 环境变量覆盖）；
+> ② `start-edge-debug.ps1` 是 PowerShell，需换成对应的 shell 脚本；
+> ③ `patch-localstate.mjs` 里的 `Local State` 路径换成 macOS 的 `~/Library/Application Support/Microsoft Edge/` 或 Linux 的 `~/.config/microsoft-edge/`。
+> 其余规则（“默认用户数据目录禁止远程调试”的限制、配置方式、选课优先级）两边一致。
 
 ## 快速开始
 
