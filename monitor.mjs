@@ -66,6 +66,7 @@ const DEFAULTS = {
   apiTimeoutMs: 15_000,
   cookieRefreshMs: 60_000, // 从浏览器同步 cookie 的间隔
   statsEveryMs: 10_000, // 状态行（含实测速率）输出间隔
+  logEveryMs: 120_000,  // 容量一直没变化时，至少每 2 分钟打一行（否则日志看着像卡死）
   deadline: "2026-09-24T20:00:00+08:00",
   stopWhenAllEnrolled: true,
   coursePageUrl: "https://yjsxk.sjtu.edu.cn/yjsxkapp/sys/xsxkapp/course.html",
@@ -422,12 +423,15 @@ class Runner {
     return rand(lo, hi);
   }
 
-  /** 同一条日志内容不重复刷（内容变化才打印） */
-  logThrottled(bjmc, text, { force = false } = {}) {
+  /** 同一条日志内容不重复刷；内容没变化时至少每 every 毫秒再打一行（证明进程还活着） */
+  logThrottled(bjmc, text, { force = false, every = 0, rounds = 0 } = {}) {
     const prev = this.lastLog.get(bjmc);
-    if (!force && prev && prev.text === text) return;
-    this.lastLog.set(bjmc, { text, at: Date.now() });
-    log(`[${short(bjmc)}] ${text}`);
+    const now = Date.now();
+    const changed = !prev || prev.text !== text;
+    const due = !!prev && every > 0 && now - prev.at >= every;
+    if (!force && !changed && !due) return;
+    this.lastLog.set(bjmc, { text, at: now });
+    log(`[${short(bjmc)}] ${!changed && due && rounds ? `第 ${rounds} 轮 · ` : ""}${text}`);
   }
 
   // ---------------- 单目标处理 ----------------
@@ -459,7 +463,7 @@ class Runner {
     const bestText = a.best ? describe(a.best) : (a.matched.length ? "无符合条件班级" : "该课程代码下没有班级");
     const waitText = a.firstPriority && (!a.best || a.best.bjdm !== a.firstPriority.bjdm) ? ` 首选=${describe(a.firstPriority)}` : "";
     ctx.summary = `${candText} 最优=${bestText}${waitText}`;
-    this.logThrottled(t.bjmc, ctx.summary);
+    this.logThrottled(t.bjmc, ctx.summary, { every: Number(cfg.logEveryMs) || 120_000, rounds: ctx.stats.checks });
 
     if (!a.best) {
       if (a.reason === "no-course") {
