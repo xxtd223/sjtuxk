@@ -459,7 +459,7 @@ class Runner {
       return "enrolled";
     }
 
-    const candText = `候选${a.matched.length} 校区内${a.onCampus.length} 符合条件${a.pool.length} 有空位${a.ranked.filter((c) => c.vacancy).length}`;
+    const candText = `候选${a.matched.length} 校区内${a.onCampus.length} 不冲突${a.selectable.length} 符合条件${a.pool.length} 有空位${a.ranked.filter((c) => c.vacancy).length}`;
     const bestText = a.best ? describe(a.best) : (a.matched.length ? "无符合条件班级" : "该课程代码下没有班级");
     const waitText = a.firstPriority && (!a.best || a.best.bjdm !== a.firstPriority.bjdm) ? ` 首选=${describe(a.firstPriority)}` : "";
     ctx.summary = `${candText} 最优=${bestText}${waitText}`;
@@ -471,6 +471,8 @@ class Runner {
       } else if (a.reason === "no-campus") {
         const where = t.campus ? `校区「${t.campus}」` : "校区";
         this.notify("nocampus:" + t.bjmc, `⚠️ ${t.bjmc}：找到 ${a.matched.length} 个班级，但没有一个符合${where}，按规则不选。现有：${a.matched.slice(0, 4).map(describe).join("；")}`, cfg);
+      } else if (a.reason === "all-conflict") {
+        this.notify("allconflict:" + t.bjmc, `⚠️ ${t.bjmc}：符合校区/筛选条件的 ${a.onCampus.length} 个班级全部与已选课程冲突（IS_CONFLICT=1），按规则不选（选了也会被教务拒绝/撞课）。现有：${a.onCampus.slice(0, 4).map(describe).join("；")}`, cfg);
       } else {
         const miss = [t.teachers.length && `教师 ${t.teachers.join("/")}`, t.time && `时间 ${t.time}`].filter(Boolean).join("、") || "教师/时间";
         this.notify("nofit:" + t.bjmc, `⚠️ ${t.bjmc}：闵行等校区内有 ${a.onCampus.length} 个班级，但没有符合${miss}的（当前严格模式，不降级），暂不选课。`, cfg);

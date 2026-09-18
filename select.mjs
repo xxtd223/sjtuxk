@@ -9,13 +9,17 @@
  *   time     可选。上课时间地点关键词（对 PKSJDDMS 做子串匹配，如 "星期四"）
  *   allowFallback 可选。默认 true：优先档全满/不存在时，接 2 → 3 的顺序降级；
  *            设为 false 则严格模式（只选「教师+时间」都符合的班）。
+ *   avoidConflict 可选。默认 true：**与已选课程冲突**的班级不选（IS_CONFLICT===1）。
+ *            设为 false 才允许选冲突班（一般没必要，选了也会被教务拒绝/撞课）。
  *   lx       可选。提交选课时的课程来源标识，默认 "0"（计划内课程）
  *
  * 选择规则（字典序，不是加权平均）：
  *   1) 校区：**硬门槛**。只考虑符合校区的班级；一个都没有 → 不选（不会退而选别的校区）。
- *   2) 任课教师：符合教师的班级**整档**优先于不符合的。
- *   3) 上课时间地点：没有符合教师的班级时，符合时间的优先；都不符合的最后才考虑。
- *   4) 同一档内：有空位优先 → 教师关键词位置（越靠前越优）→ 时间关键词位置 → 班级代码。
+ *   2) 冲突：**硬门槛**（默认开启）。与已选课程冲突的班级直接排除；
+ *      于是「最优=冲突班、次优=不冲突班」时会自动选后者，而不是硬抢冲突班。
+ *   3) 任课教师：符合教师的班级**整档**优先于不符合的。
+ *   4) 上课时间地点：没有符合教师的班级时，符合时间的优先；都不符合的最后才考虑。
+ *   5) 同一档内：有空位优先 → 教师关键词位置（越靠前越优）→ 时间关键词位置 → 班级代码。
  *
  * 档位 tier：教师✔时间✔ = 0；教师✔时间✘ = 1；教师✘时间✔ = 2；都✘ = 3。
  * 只在「该档存在班级」时选该档；所以高优先档全满时是等它出空位，而不是改选低优先档。
@@ -59,6 +63,7 @@ export function normalizeTarget(raw) {
     teachers: toArray(raw?.teachers ?? raw?.teacher),
     time: String(raw?.time ?? "").trim(),
     allowFallback: raw?.allowFallback !== false, // 默认 true，显式写 false 才严格
+    avoidConflict: raw?.avoidConflict !== false, // 默认 true，显式写 false 才允许选冲突班
     lx: raw?.lx != null ? String(raw.lx) : "0",
   };
 }
@@ -110,6 +115,8 @@ export function analyze(target, rows = [], enrolled = []) {
       kxrs: Number(r.kxrs),
       vacancy: hasVacancy(r),
       campusOk,
+      conflict: Number(r?.conflict) === 1, // IS_CONFLICT===1 → 与已选课程冲突
+      conflictOk: Number(r?.conflict) !== 1,
       teacherOk,
       timeOk,
       tier: (teacherOk ? 0 : 2) + (timeOk ? 0 : 1),
@@ -123,8 +130,10 @@ export function analyze(target, rows = [], enrolled = []) {
 
   // 校区是硬门槛：不满足的直接排除（allowFallback 也不放宽这一条）
   const onCampus = matched.filter((c) => c.campusOk);
+  // 冲突也是硬门槛（默认）：与已选课程冲突的班直接排除，避免「选了也白选」（教务拒绝/撞课）
+  const selectable = target.avoidConflict ? onCampus.filter((c) => !c.conflict) : onCampus;
   // 严格模式只考虑 tier 0（教师+时间都符合）；允许降级时才纳入其它档
-  const pool = target.allowFallback ? onCampus : onCampus.filter((c) => c.tier === 0);
+  const pool = target.allowFallback ? selectable : selectable.filter((c) => c.tier === 0);
 
   // 选中的档 = pool 里存在的最低档（高优先档全满时等空位，不改选低档）
   const bestTier = pool.length ? Math.min(...pool.map((c) => c.tier)) : null;
@@ -133,6 +142,7 @@ export function analyze(target, rows = [], enrolled = []) {
 
   const reason = matched.length === 0 ? "no-course"
     : onCampus.length === 0 ? "no-campus"
+    : selectable.length === 0 ? "all-conflict"
     : pool.length === 0 ? "no-qualified"
     : null;
 
@@ -140,6 +150,7 @@ export function analyze(target, rows = [], enrolled = []) {
     target,
     matched,
     onCampus,
+    selectable,
     pool,
     ranked,
     best: ranked[0] || null,
@@ -153,6 +164,7 @@ export function analyze(target, rows = [], enrolled = []) {
       campusOk: onCampus.length,
       teacherOk: matched.filter((c) => c.teacherOk && c.campusOk).length,
       timeOk: matched.filter((c) => c.timeOk && c.campusOk).length,
+      conflict: matched.filter((c) => c.conflict && c.campusOk).length,
       vacant: matched.filter((c) => c.vacancy && c.campusOk).length,
     },
   };
@@ -161,6 +173,7 @@ export function analyze(target, rows = [], enrolled = []) {
 export function describe(c) {
   if (!c) return "-";
   const bits = [];
+  if (c.conflict) bits.push("⚠冲突");
   if (c.teacher) bits.push(c.teacher);
   if (c.time) bits.push(c.time);
   const cap = Number.isFinite(c.dqrs) ? `${c.dqrs}/${c.kxrs}` : "容量未知";
